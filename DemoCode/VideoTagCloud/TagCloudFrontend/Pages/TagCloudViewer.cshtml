@@ -1,0 +1,83 @@
+﻿@page "/tagcloud/{Id}"
+@inject HttpClient Http
+
+<h1>@this.Data?.Summary?.DisplayName Tag Cloud!</h1>
+
+
+<div class="tag-cloud">
+    @if (this.Data?.Tags != null)
+    {
+        if (this.Data?.Tags.Length > 0)
+        {
+            @foreach (var tag in this.Data.Tags)
+            {
+                <span class="tag kind-@tag.Category">@tag.Text</span>
+            }
+        }
+        else
+        {
+            <p>Tag Cloud Still Processing</p>
+        }
+    }
+    else
+    {
+        <p>Loading Tag Cloud</p>
+    }
+</div>
+
+
+@functions
+{
+    [Parameter]
+    string Id { get; set; }
+
+    TagCloudClient.TagData Data { get; set; }
+
+    private System.Timers.Timer _timer;
+
+
+    protected override Task OnParametersSetAsync()
+    {
+        return LoadTagDataAsync();
+    }
+
+    private async Task LoadTagDataAsync()
+    {
+        try
+        {
+            TagCloudClient client = new TagCloudClient(Http);
+            this.Data = await client.FetchTagCloudData(Id);
+            if (this.Data?.Tags?.Length > 0)
+            {
+                if (this._timer != null)
+                {
+                    Console.WriteLine("Stoping Timer");
+                    this._timer.Enabled = false;
+                    this.StateHasChanged();
+                }
+                Console.WriteLine($"Got tags for {this.Data.Summary.DisplayName} from my client: {this.Data.Tags.Length}");
+            }
+            else
+            {
+                Console.WriteLine("No tags returned");
+                if (this._timer == null)
+                {
+                    this._timer = new System.Timers.Timer(5000);
+                    this._timer.Elapsed += (o, e) =>
+                    {
+                        Console.WriteLine("Timer Event");
+                        LoadTagDataAsync();
+                    };
+                }
+
+                Console.WriteLine("Starting Timer");
+                this._timer.Enabled = true;
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"Error getting tag cloud data: {e.Message}");
+            Console.WriteLine(e.StackTrace);
+        }
+    }
+}

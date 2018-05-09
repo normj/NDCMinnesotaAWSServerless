@@ -1,0 +1,217 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+  "Transform" : "AWS::Serverless-2016-10-31",
+  "Description" : "An AWS Serverless Application.",
+
+  "Parameters" : {
+	"SSMStateMachineName" : {
+	    "Type" : "String",
+        "Default" : "/VideoTagCloud/Debug/StateMachineArn"
+	},
+    "SSMStorageBucketName" : {
+        "Type" : "String",
+        "Default" : "/VideoTagCloud/Debug/StorageBucket"
+    }
+  },
+
+  "Resources" : {
+
+    "StorageBucket" : {
+        "Type" : "AWS::S3::Bucket",
+        "Properties" : {			
+        }
+    },
+
+    "TransferVideoToS3Task" : {
+        "Type" : "AWS::Lambda::Function",
+        "Properties" : {
+            "Handler" : "StepFunctionTasks::StepFunctionTasks.TransferVideoToS3Task::UploadVideoToS3Async",
+            "Role"    : {"Fn::GetAtt" : [ "LambdaRole", "Arn"]},
+            "Runtime" : "dotnetcore2.0",
+            "MemorySize" : 256,
+            "Timeout" : 300,
+            "Environment" : {
+				"Variables" : {
+					"StorageBucket" : { "Ref" : "StorageBucket" }
+				}
+			},
+            "Code" : {
+                "S3Bucket" : "",
+                "S3Key" : ""
+            }
+        }
+    },
+
+    "StartTranscribeTask" : {
+        "Type" : "AWS::Lambda::Function",
+        "Properties" : {
+            "Handler" : "StepFunctionTasks::StepFunctionTasks.TranscribeTask::StartTranscribeAsync",
+            "Role"    : {"Fn::GetAtt" : [ "LambdaRole", "Arn"]},
+            "Runtime" : "dotnetcore2.0",
+            "MemorySize" : 128,
+            "Timeout" : 30,
+            "Environment" : {
+				"Variables" : {
+					"StorageBucket" : { "Ref" : "StorageBucket" }
+				}
+			},
+            "Code" : {
+                "S3Bucket" : "",
+                "S3Key" : ""
+            }
+        }
+    },
+
+    "GetStatusForTranscribeTask" : {
+        "Type" : "AWS::Lambda::Function",
+        "Properties" : {
+            "Handler" : "StepFunctionTasks::StepFunctionTasks.TranscribeTask::GetStatusForTranscribeAsync",
+            "Role"    : {"Fn::GetAtt" : [ "LambdaRole", "Arn"]},
+            "Runtime" : "dotnetcore2.0",
+            "MemorySize" : 128,
+            "Timeout" : 30,
+            "Environment" : {
+				"Variables" : {
+					"StorageBucket" : { "Ref" : "StorageBucket" }
+				}
+			},
+            "Code" : {
+                "S3Bucket" : "",
+                "S3Key" : ""
+            }
+        }
+    },
+
+    "ProcessCompletedTranscribeJobsTask" : {
+        "Type" : "AWS::Lambda::Function",
+        "Properties" : {
+            "Handler" : "StepFunctionTasks::StepFunctionTasks.TranscribeTask::ProcessCompletedTranscribeJobsAsync",
+            "Role"    : {"Fn::GetAtt" : [ "LambdaRole", "Arn"]},
+            "Runtime" : "dotnetcore2.0",
+            "MemorySize" : 128,
+            "Timeout" : 30,
+            "Environment" : {
+				"Variables" : {
+					"StorageBucket" : { "Ref" : "StorageBucket" }
+				}
+			},
+            "Code" : {
+                "S3Bucket" : "",
+                "S3Key" : ""
+            }
+        }
+    },
+
+    "ComputeTagCloudCategoriesTask" : {
+        "Type" : "AWS::Lambda::Function",
+        "Properties" : {
+            "Handler" : "StepFunctionTasks::StepFunctionTasks.TagCloudTask::ComputeTagCloudCategoriesAsync",
+            "Role"    : {"Fn::GetAtt" : [ "LambdaRole", "Arn"]},
+            "Runtime" : "dotnetcore2.0",
+            "MemorySize" : 128,
+            "Timeout" : 30,
+            "Environment" : {
+				"Variables" : {
+					"StorageBucket" : { "Ref" : "StorageBucket" }
+				}
+			},
+            "Code" : {
+                "S3Bucket" : "",
+                "S3Key" : ""
+            }
+        }
+    },
+
+    "LambdaRole" : {
+        "Type" : "AWS::IAM::Role",
+        "Properties" : {
+            "AssumeRolePolicyDocument" : {
+                "Version" : "2012-10-17",
+                "Statement" : [
+                    {
+                        "Action" : [
+                            "sts:AssumeRole"
+                        ],
+                        "Effect" : "Allow",
+                        "Principal" : {
+                            "Service" : [
+                                "lambda.amazonaws.com"
+                            ]
+                        }
+                    }
+                ]
+            },
+            "ManagedPolicyArns" : [
+                "arn:aws:iam::aws:policy/AmazonTranscribeFullAccess",
+                "arn:aws:iam::aws:policy/AmazonS3FullAccess",
+                "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+            ]
+       }
+    },
+
+
+    "StateMachineRole" : {
+        "Type" : "AWS::IAM::Role",
+        "Properties" : {
+            "AssumeRolePolicyDocument" : {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {
+                    "Service": {"Fn::Sub" : "states.${AWS::Region}.amazonaws.com"}
+                  },
+                  "Action": "sts:AssumeRole"
+                }
+              ]
+            },
+            "Policies" : [{
+                "PolicyName": "StepFunctionLambdaInvoke",
+                "PolicyDocument": {
+                  "Version": "2012-10-17",
+                  "Statement": [
+                    {
+                      "Effect": "Allow",
+                      "Action": [
+                        "lambda:InvokeFunction"
+                      ],
+                      "Resource": "*"
+                    }
+                  ]
+                }
+            }]
+        }
+    },
+
+    "VideoToTagCloudStateMachine" : {
+        "Type" : "AWS::StepFunctions::StateMachine",
+        "Properties": {
+            "RoleArn": { "Fn::GetAtt": [ "StateMachineRole", "Arn" ] },
+            "DefinitionString": { "Fn::Sub": "" }
+        }
+    },
+
+    "SSMStateMachine" : {
+        "Type" : "AWS::SSM::Parameter",
+        "Properties" : {
+            "Type" : "String",
+            "Name" : { "Ref" : "SSMStateMachineName" },
+            "Value" : { "Ref" : "VideoToTagCloudStateMachine" }
+        }
+    },
+
+    "SSMStorageBucket" : {
+        "Type" : "AWS::SSM::Parameter",
+        "Properties" : {
+            "Type" : "String",
+            "Name" : { "Ref" : "SSMStorageBucketName" },
+            "Value" : { "Ref" : "StorageBucket" }
+        }
+    }
+
+  },
+
+  "Outputs" : {
+
+  }
+}

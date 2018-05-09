@@ -1,0 +1,58 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+  "Transform" : "AWS::Serverless-2016-10-31",
+  "Description" : "An AWS Serverless Application that uses the ASP.NET Core framework running in Amazon Lambda.",
+
+  "Parameters" : {
+	"StateMachineArn" : {
+	    "Type" : "AWS::SSM::Parameter::Value<String>",
+        "Default" : "/VideoTagCloud/Debug/StateMachineArn"
+	},
+    "StorageBucket" : {
+        "Type" : "AWS::SSM::Parameter::Value<String>",
+        "Default" : "/VideoTagCloud/Debug/StorageBucket"
+    }
+  },
+
+
+  "Resources" : {
+
+    "ProxyFunction" : {
+      "Type" : "AWS::Serverless::Function",
+      "Properties": {
+        "Handler": "TagCloudWebAPI::TagCloudWebAPI.LambdaEntryPoint::FunctionHandlerAsync",
+        "Runtime": "dotnetcore2.0",
+        "CodeUri": "",
+        "MemorySize": 1024,
+        "Timeout": 30,
+        "Role": null,
+        "Policies": [ "AWSLambdaFullAccess", "AmazonS3FullAccess", "AWSStepFunctionsFullAccess" ],
+        "Environment" : {
+          "Variables" : {
+			"StateMachineArn": { "Ref" : "StateMachineArn" },
+			"StorageBucket" : { "Ref" : "StorageBucket" }
+          }
+        },
+        "Events": {
+          "PutResource": {
+            "Type": "Api",
+            "Properties": {
+              "Path": "/{proxy+}",
+              "Method": "ANY"
+            }
+          }
+        }
+      }
+    }
+  },
+
+  "Outputs" : {
+	"StateMachineArn" : {
+	    "Value" : { "Ref" : "StateMachineArn" }
+	},
+	"ApiURL" : {
+        "Description" : "API endpoint URL for Prod environment",
+        "Value" : { "Fn::Sub" : "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/" }
+    }
+  }
+}

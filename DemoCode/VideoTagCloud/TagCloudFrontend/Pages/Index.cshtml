@@ -1,0 +1,40 @@
+﻿@page "/"
+@inject HttpClient Http
+@inject Microsoft.AspNetCore.Blazor.Services.IUriHelper UriHelper
+
+<h1>Welcome to the Video Tag Generator!</h1>
+
+<div class="form-group">
+    <label for="exampleInputEmail1">Enter name for video:</label>
+    <input type="text" bind=@VideoName class="form-control" placeholder="Unqiue Name" />
+</div>
+<div class="form-group">
+    <label for="exampleInputEmail1">URL to video:</label>
+    <input type="text" bind=@VideoUrl class="form-control" placeholder="http://video-archive.com/lecture.mp4" />
+</div>
+
+<button onclick=@StartGenerator class="btn btn-primary">Begin Generator</button>
+
+@functions
+{
+
+public string VideoUrl { get; set; }
+public string VideoName { get; set; }
+
+private async void StartGenerator()
+{
+    Console.WriteLine($"Video Name: {this.VideoName}");
+    Console.WriteLine($"Video Url: {this.VideoUrl}");
+
+    var job = new TagCloudClient.TagCloudJob
+    {
+        VideoName = this.VideoName,
+        VideoUrl = this.VideoUrl
+    };
+
+    TagCloudClient client = new TagCloudClient(Http);
+    var id = await client.SubmitJobAsync(job);
+
+    UriHelper.NavigateTo($"/tagcloud/{id}");
+}
+}

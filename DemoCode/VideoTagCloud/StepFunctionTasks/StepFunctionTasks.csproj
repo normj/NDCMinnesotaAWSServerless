@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp2.0</TargetFramework>
+    <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="TagCloudProcessor\en_US_stop.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Amazon.Lambda.Core" Version="1.0.0" />
+    <PackageReference Include="Amazon.Lambda.Serialization.Json" Version="1.1.0" />
+    <PackageReference Include="AWSSDK.S3" Version="3.3.18.2" />
+    <PackageReference Include="AWSSDK.TranscribeService" Version="3.3.1.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <DotNetCliToolReference Include="Amazon.Lambda.Tools" Version="2.1.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="TagCloudProcessor\en_US_stop.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TagCloudCommon\TagCloudCommon.csproj" />
+  </ItemGroup>
+
+</Project>

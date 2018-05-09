@@ -1,0 +1,51 @@
+﻿@inject HttpClient Http
+
+<div class="top-row pl-4 navbar navbar-dark">
+    <a class="navbar-brand" href="/">Create New Tag Cloud</a>
+    <button class="navbar-toggler" onclick=@ToggleNavMenu>
+        <span class="navbar-toggler-icon"></span>
+    </button>
+</div>
+
+<div class=@(collapseNavMenu ? "collapse" : null) onclick=@ToggleNavMenu>
+    <ul class="nav flex-column">
+		@if (this.Tags != null)
+		{
+			@foreach (var tag in Tags)
+			{
+				<li>
+					<NavLink class="nav-link" href="@String.Format("/tagcloud/{0}", tag.Id)" Match=NavLinkMatch.All>
+						<span class="oi oi-list-rich" aria-hidden="true"></span> @tag.DisplayName
+					</NavLink>
+				</li>
+			}
+		}		
+    </ul>
+</div>
+
+@functions {
+    bool collapseNavMenu = true;
+
+    void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+	
+    TagCloudClient.TagCloudSummary[] Tags { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        try
+        {
+            Console.WriteLine("Starting summary fetch");
+            TagCloudClient client = new TagCloudClient(Http);
+            this.Tags = await client.FetchTagCloudSummary();
+            Console.WriteLine("Got tag summaries from my client");
+        }
+        catch(Exception e)
+        {
+            Console.WriteLine($"Error getting tag cloud summaries: {e.Message}");
+            Console.WriteLine(e.StackTrace);
+        }
+    }	
+}

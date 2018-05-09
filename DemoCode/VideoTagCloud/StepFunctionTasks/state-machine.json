@@ -1,0 +1,67 @@
+﻿{
+  "Comment": "State Machine",
+  "StartAt": "TransferVideoToS3Task",
+  "States": {
+
+    "TransferVideoToS3Task": {
+      "Type": "Task",
+      "Resource": "${TransferVideoToS3Task.Arn}",
+      "Next": "StartTranscribeTask"
+    },
+
+    "StartTranscribeTask": {
+      "Type": "Task",
+      "Resource": "${StartTranscribeTask.Arn}",
+      "Next": "WaitForTranscribe"
+    },
+
+    "WaitForTranscribe": {
+      "Type": "Wait",
+      "Seconds": 5,
+      "Next": "GetStatusForTranscribeTask"
+    },
+
+    "GetStatusForTranscribeTask": {
+      "Type": "Task",
+      "Resource": "${GetStatusForTranscribeTask.Arn}",
+      "Next": "ChoiceJobStatus",
+      "Retry": [
+        {
+          "ErrorEquals": [ "States.ALL" ],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 5,
+          "BackoffRate": 1.5
+        }
+      ]
+    },
+
+    "ChoiceJobStatus": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.TranscriptionJobStatus",
+          "StringEquals": "COMPLETED",
+          "Next": "ProcessCompletedTranscribeJobsTask"
+        },
+        {
+          "Variable": "$.TranscriptionJobStatus",
+          "StringEquals": "IN_PROGRESS",
+          "Next": "WaitForTranscribe"
+        }
+      ]
+    },
+
+    "ProcessCompletedTranscribeJobsTask": {
+      "Type": "Task",
+      "Resource": "${ProcessCompletedTranscribeJobsTask.Arn}",
+      "Next": "ComputeTagCloudCategoriesTask"
+    },
+
+    "ComputeTagCloudCategoriesTask": {
+      "Type": "Task",
+      "Resource": "${ComputeTagCloudCategoriesTask.Arn}",
+      "End": true
+    }
+
+  }
+}
